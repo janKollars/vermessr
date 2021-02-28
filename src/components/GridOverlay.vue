@@ -90,7 +90,7 @@ export default {
       emit('update:found-value', hoveredValue.value)
     }
     const findValue = (event) => {
-      hoveredValue.value = 100 - event.path[0].getAttribute("y1");
+      hoveredValue.value = 100 - event.target.getAttribute("y1");
     };
 
     const dragging = ref(false);
