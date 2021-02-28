@@ -1,28 +1,28 @@
 <template>
   <div ref="el" :class="['grid-overlay', { 'grid-overlay--resizing': resize }]" :style="overlayVariables">
     <svg
-      viewBox="0 0 100 100"
+      :viewBox="`${scale.xStart} ${scale.yStart} ${scale.xEnd} ${scale.yEnd}`"
       preserveAspectRatio="none"
       @mouseover="!resize ? findValue($event) : ''"
       @click="!resize ? captureValue() : ''"
     >
       <line
-        v-if="vLine"
-        :x1="vLine"
-        y1="0"
-        :x2="vLine"
-        y2="100"
+        v-if="vRuler.position"
+        :x1="vRuler.position"
+        :y1="scale.yStart"
+        :x2="vRuler.position"
+        :y2="scale.yEnd"
         stroke="black"
-        stroke-width="0.1"
+        :stroke-width="vRuler.size"
       />
       <line
-        v-for="hLine in 101"
+        v-for="hLine in linesCount"
         :key="hLine"
-        x1="0"
+        :x1="scale.xStart"
         :y1="hLine - 1"
-        x2="100"
+        :x2="scale.xEnd"
         :y2="hLine - 1"
-        :stroke="hoveredValue === 101 - hLine ? '#00000055' : 'transparent'"
+        :stroke="hoveredValue === linesCount - hLine ? '#00000055' : 'transparent'"
         stroke-width="1"
       />
     </svg>
@@ -62,8 +62,12 @@ export default {
       type: Boolean,
       required: true,
     },
-    vLine: {
-      type: Number,
+    scale: {
+      type: Object,
+      required: true
+    },
+    vRuler: {
+      type: Object,
       required: true,
     },
   },
@@ -84,13 +88,14 @@ export default {
       "--overlay-x": props.overlayPosition.x + "%",
       "--overlay-y": props.overlayPosition.y + "%",
     }));
+    const linesCount = computed(() => props.scale.yEnd - props.scale.yStart + 1)
 
     const hoveredValue = ref(undefined);
     const captureValue = () => {
       emit('update:found-value', hoveredValue.value)
     }
     const findValue = (event) => {
-      hoveredValue.value = 100 - event.target.getAttribute("y1");
+      hoveredValue.value = (linesCount.value - 1) - event.target.getAttribute("y1");
     };
 
     const dragging = ref(false);
@@ -151,6 +156,7 @@ export default {
     return {
       el,
       overlayVariables,
+      linesCount,
       hoveredValue,
       findValue,
       captureValue,

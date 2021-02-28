@@ -1,7 +1,23 @@
 <template>
   <aside :class="[ 'settings', { 'settings--operatable': image.dataUrl }]">
-    <label for="gray-input">Gray</label><br>
-    <input id="gray-input" v-model.number="searchArea" type="number" />
+    <fieldset class="input-array">
+      <legend>vertical ruler</legend>
+      <label for="vruler-position">Position</label>
+      <input id="vruler-position" v-model.number="vRuler.position" type="number" />
+      <label for="vruler-size">Size</label>
+      <input id="vruler-size" v-model.number="vRuler.size" type="number" step="0.01" min="0" />
+    </fieldset>
+    <fieldset class="input-array">
+      <legend>Scale</legend>
+      <label for="scale-x-start">X start</label>
+      <input id="scale-x-start" v-model.number="scale.xStart" type="number" />
+      <label for="scale-x-end">X end</label>
+      <input id="scale-x-end" v-model.number="scale.xEnd" type="number" />
+      <label for="scale-y-start">Y start</label>
+      <input id="scale-y-start" v-model.number="scale.yStart" type="number" />
+      <label for="scale-y-end">Y end</label>
+      <input id="scale-y-end" v-model.number="scale.yEnd" type="number" />
+    </fieldset>
     <fieldset class="input-array">
       <legend>Overlay Position</legend>
       <label for="overlay-width">Width (%)</label>
@@ -14,7 +30,7 @@
       <input id="overlay-y" v-model.number="overlay.y" type="number" step="0.1" />
       <button :aria-pressed="resizing.toString()" title="Shift" @click="resizing = !resizing">resize freely</button>
     </fieldset>
-    {{ foundValue }}
+    <p>{{ foundValue }}</p>
   </aside>
 
   <div :class="['canvas', { 'canvas--operating': image.loading }]" @drop="fileDropHandler" @dragover="fileDragOverHandler">
@@ -22,27 +38,21 @@
     <template v-else>
       <div class="uploaded-image" :style="image.width ? `--aspect-ratio: ${image.width}/${image.height}` : ''">
         <img v-if="image.dataUrl" :src="image.dataUrl" alt="" draggable="false" />
-        <grid-overlay v-model:found-value="foundValue" v-model:overlay-position="overlay" :resize="resizing" :v-line="vLine" />
+        <grid-overlay v-model:found-value="foundValue" v-model:overlay-position="overlay" :resize="resizing" :scale="scale" :v-ruler="vRuler" />
       </div>
     </template>
   </div>
 </template>
 
 <script>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import GridOverlay from './components/GridOverlay.vue'
 
 export default {
-  components: {
-    GridOverlay
-  },
+  components: { GridOverlay },
   setup() {
     const foundValue = ref(undefined)
     const resizing = ref(false)
-    const searchArea = ref(0)
-    const vLine = computed(() =>
-      searchArea.value * 10 / 8
-    )
 
     const image = reactive({
       loading: false,
@@ -72,6 +82,16 @@ export default {
       event.preventDefault()
     }
 
+    const vRuler = reactive({
+      position: 0,
+      size: 0.1
+    })
+    const scale = reactive({
+      xStart: 0,
+      xEnd: 70,
+      yStart: 0,
+      yEnd: 100
+    })
     const overlay = reactive({
       width: 100,
       height: 100,
@@ -95,11 +115,11 @@ export default {
     return {
       foundValue,
       resizing,
-      searchArea,
-      vLine,
       image,
       fileDropHandler,
       fileDragOverHandler,
+      vRuler,
+      scale,
       overlay
     }
   }
@@ -152,6 +172,13 @@ button[aria-pressed="true"] {
   padding: 1rem;
 }
 
+.settings {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.settings > :not(:last-child) {
+  margin-bottom: 1rem;
+}
 .settings:not(.settings--operatable) {
   visibility: hidden;
 }
