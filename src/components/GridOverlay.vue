@@ -1,5 +1,9 @@
 <template>
-  <div ref="el" :class="['grid-overlay', { 'grid-overlay--resizing': resize }]" :style="overlayVariables">
+  <div
+    ref="el"
+    :class="['grid-overlay', { 'grid-overlay--resizing': resize }]"
+    :style="overlayVariables"
+  >
     <svg
       :viewBox="`${scale.xStart} ${scale.yStart} ${scale.xEnd} ${scale.yEnd}`"
       preserveAspectRatio="none"
@@ -32,14 +36,14 @@
       @mousedown="mouseDownHandler"
       @mouseup="mouseUpHandler"
     >
-      <div class="grab-areas__top-left" />
-      <div class="grab-areas__top-center" />
-      <div class="grab-areas__top-right" />
-      <div class="grab-areas__center-left" />
+      <div class="grab-areas__top-left" @mousedown="resizeTLStart()" />
+      <div class="grab-areas__top-center" @mousedown="resizeTStart()" />
+      <div class="grab-areas__top-right" @mousedown="resizeTRStart()" />
+      <div class="grab-areas__center-left" @mousedown="resizeLStart()" />
       <div class="grab-areas__center-center" @mousedown="moveStart()" />
-      <div class="grab-areas__center-right" />
-      <div class="grab-areas__bottom-left" />
-      <div class="grab-areas__bottom-center" />
+      <div class="grab-areas__center-right" @mousedown="resizeRStart()" />
+      <div class="grab-areas__bottom-left" @mousedown="resizeBLStart()" />
+      <div class="grab-areas__bottom-center" @mousedown="resizeBStart()" />
       <div class="grab-areas__bottom-right" @mousedown="resizeBRStart()" />
     </div>
   </div>
@@ -52,7 +56,7 @@ export default {
   props: {
     foundValue: {
       type: Number,
-      default: undefined
+      default: undefined,
     },
     overlayPosition: {
       type: Object,
@@ -64,7 +68,7 @@ export default {
     },
     scale: {
       type: Object,
-      required: true
+      required: true,
     },
     vRuler: {
       type: Object,
@@ -73,29 +77,32 @@ export default {
   },
   emits: ['update:found-value'],
   setup(props, { emit }) {
-    const el = ref(null)
+    const el = ref(null);
     watch(el, (el) => {
-      const resizeObserver = new ResizeObserver(entries => {
-        startPosition.parentWidth = entries[0].contentRect.width
-        startPosition.parentHeight = entries[0].contentRect.height
-      })
-      resizeObserver.observe(el.parentElement)
-    })
+      const resizeObserver = new ResizeObserver((entries) => {
+        startPosition.parentWidth = entries[0].contentRect.width;
+        startPosition.parentHeight = entries[0].contentRect.height;
+      });
+      resizeObserver.observe(el.parentElement);
+    });
 
     const overlayVariables = computed(() => ({
-      "--overlay-width": props.overlayPosition.width + "%",
-      "--overlay-height": props.overlayPosition.height + "%",
-      "--overlay-x": props.overlayPosition.x + "%",
-      "--overlay-y": props.overlayPosition.y + "%",
+      '--overlay-width': props.overlayPosition.width + '%',
+      '--overlay-height': props.overlayPosition.height + '%',
+      '--overlay-x': props.overlayPosition.x + '%',
+      '--overlay-y': props.overlayPosition.y + '%',
     }));
-    const linesCount = computed(() => props.scale.yEnd - props.scale.yStart + 1)
+    const linesCount = computed(
+      () => props.scale.yEnd - props.scale.yStart + 1
+    );
 
     const hoveredValue = ref(undefined);
     const captureValue = () => {
-      emit('update:found-value', hoveredValue.value)
-    }
+      emit('update:found-value', hoveredValue.value);
+    };
     const findValue = (event) => {
-      hoveredValue.value = (linesCount.value - 1) - event.target.getAttribute("y1");
+      hoveredValue.value =
+        linesCount.value - 1 - event.target.getAttribute('y1');
     };
 
     const dragging = ref(false);
@@ -105,7 +112,7 @@ export default {
       mouseX: ref(undefined),
       mouseY: ref(undefined),
       parentWidth: undefined,
-      parentHeight: undefined
+      parentHeight: undefined,
     };
 
     const mouseDownHandler = (event) => {
@@ -119,11 +126,11 @@ export default {
     };
 
     const registerMouseMoveEvent = (fun) => {
-      document.addEventListener("mousemove", fun);
+      document.addEventListener('mousemove', fun);
       document.addEventListener(
-        "mouseup",
+        'mouseup',
         () => {
-          document.removeEventListener("mousemove", fun);
+          document.removeEventListener('mousemove', fun);
         },
         {
           once: true,
@@ -131,26 +138,109 @@ export default {
       );
     };
 
-    const moveHandler = (event) => {
-      event.preventDefault();
-      props.overlayPosition.x =
-        startPosition.overlayPosition.x + (event.x - startPosition.mouseX) / startPosition.parentWidth * 100;
-      props.overlayPosition.y =
-        startPosition.overlayPosition.y + (event.y - startPosition.mouseY) / startPosition.parentHeight * 100;
+    const transformHelper = {
+      x(event) {
+        props.overlayPosition.x =
+          startPosition.overlayPosition.x +
+          ((event.x - startPosition.mouseX) / startPosition.parentWidth) * 100;
+      },
+      y(event) {
+        props.overlayPosition.y =
+          startPosition.overlayPosition.y +
+          ((event.y - startPosition.mouseY) / startPosition.parentHeight) * 100;
+      },
+      width(event, additive = true) {
+        props.overlayPosition.width =
+          startPosition.overlayPosition.width +
+          ((event.x - startPosition.mouseX) / startPosition.parentWidth) *
+            100 *
+            (additive ? 1 : -1);
+      },
+      height(event, additive = true) {
+        props.overlayPosition.height =
+          startPosition.overlayPosition.height +
+          ((event.y - startPosition.mouseY) / startPosition.parentHeight) *
+            100 *
+            (additive ? 1 : -1);
+      },
     };
-    const resizeBRHandler = (event) => {
-      event.preventDefault();
-      props.overlayPosition.width =
-        startPosition.overlayPosition.width + (event.x - startPosition.mouseX) / startPosition.parentWidth * 100;
-      props.overlayPosition.height =
-        startPosition.overlayPosition.height + (event.y - startPosition.mouseY) / startPosition.parentHeight * 100;
+
+    const transformHandler = {
+      move(event) {
+        event.preventDefault();
+        transformHelper.y(event);
+        transformHelper.x(event);
+      },
+      tl(event) {
+        event.preventDefault();
+        transformHelper.y(event);
+        transformHelper.height(event, false);
+        transformHelper.x(event);
+        transformHelper.width(event, false);
+      },
+      t(event) {
+        event.preventDefault();
+        transformHelper.y(event);
+        transformHelper.height(event, false);
+      },
+      tr(event) {
+        event.preventDefault();
+        transformHelper.y(event);
+        transformHelper.height(event, false);
+        transformHelper.width(event);
+      },
+      r(event) {
+        event.preventDefault();
+        transformHelper.width(event);
+      },
+      br(event) {
+        event.preventDefault();
+        transformHelper.height(event);
+        transformHelper.width(event);
+      },
+      b(event) {
+        event.preventDefault();
+        transformHelper.height(event);
+      },
+      bl(event) {
+        event.preventDefault();
+        transformHelper.height(event);
+        transformHelper.x(event);
+        transformHelper.width(event, false);
+      },
+      l(event) {
+        event.preventDefault();
+        transformHelper.x(event);
+        transformHelper.width(event, false);
+      },
     };
 
     const moveStart = () => {
-      registerMouseMoveEvent(moveHandler);
+      registerMouseMoveEvent(transformHandler.move);
+    };
+    const resizeTLStart = () => {
+      registerMouseMoveEvent(transformHandler.tl);
+    };
+    const resizeTStart = () => {
+      registerMouseMoveEvent(transformHandler.t);
+    };
+    const resizeTRStart = () => {
+      registerMouseMoveEvent(transformHandler.tr);
+    };
+    const resizeRStart = () => {
+      registerMouseMoveEvent(transformHandler.r);
     };
     const resizeBRStart = () => {
-      registerMouseMoveEvent(resizeBRHandler);
+      registerMouseMoveEvent(transformHandler.br);
+    };
+    const resizeBStart = () => {
+      registerMouseMoveEvent(transformHandler.b);
+    };
+    const resizeBLStart = () => {
+      registerMouseMoveEvent(transformHandler.bl);
+    };
+    const resizeLStart = () => {
+      registerMouseMoveEvent(transformHandler.l);
     };
 
     return {
@@ -164,7 +254,14 @@ export default {
       mouseDownHandler,
       mouseUpHandler,
       moveStart,
+      resizeTLStart,
+      resizeTStart,
+      resizeTRStart,
+      resizeRStart,
       resizeBRStart,
+      resizeBStart,
+      resizeBLStart,
+      resizeLStart,
     };
   },
 };
@@ -188,7 +285,7 @@ export default {
   width: 100%;
 }
 .grid-overlay--resizing > svg {
-  display: none
+  display: none;
 }
 
 .grab-areas {
