@@ -1,5 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="white" />
+  <style>
+  #bg { fill: white; }
+  #axis { stroke: black; }
+  @media (prefers-color-scheme: dark) {
+    #bg { fill: black; }
+    #axis { stroke: white; }
+  }
+  </style>
+  <rect id="bg" width="100" height="100" />
   <path d="M 15 80 Q 30 10, 50 50 T 82 16" stroke="deepskyblue" fill="transparent" stroke-width="7" />
-  <path d="M 15 15 V 85 H 85" fill="transparent" stroke="black" stroke-width="10" />
+  <path id="axis" d="M 15 15 V 85 H 85" fill="transparent" stroke-width="10" />
 </svg>

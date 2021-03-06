@@ -232,6 +232,7 @@ button[aria-pressed="true"] {
 .uploaded-image {
   position: relative;
   aspect-ratio: var(--aspect-ratio);
+  max-height: 100%;
 }
 .uploaded-image > img {
   width: 100%;
