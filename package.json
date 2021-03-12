@@ -1,9 +1,9 @@
 {
-  "name": "chart-screenshot-measure",
-  "version": "0.0.0",
+  "name": "vermessr",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/janKollars/chart-screenshot-measure.git"
+    "url": "https://github.com/janKollars/vermessr.git"
   },
   "scripts": {
     "dev": "vite",
