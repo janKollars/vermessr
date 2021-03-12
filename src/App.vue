@@ -30,7 +30,7 @@
       <input id="overlay-y" v-model.number="overlay.y" type="number" step="0.1" />
       <button :aria-pressed="resizing.toString()" title="Shift" @click="resizing = !resizing">resize freely</button>
     </fieldset>
-    <p>{{ foundValue }}</p>
+    <p v-if="foundValue !== undefined">Selected value: {{ foundValue }}</p>
   </aside>
 
   <div :class="['canvas', { 'canvas--operating': image.loading }]" @drop="fileDropHandler" @dragover="fileDragOverHandler">
