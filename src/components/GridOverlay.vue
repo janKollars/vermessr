@@ -5,7 +5,7 @@
     :style="overlayVariables"
   >
     <svg
-      :viewBox="`${scale.xStart} ${scale.yStart} ${scale.xEnd} ${scale.yEnd}`"
+      :viewBox="`${scale.xStart} 0 ${scale.xEnd} ${scale.yEnd - scale.yStart}`"
       preserveAspectRatio="none"
       @mouseover="!resize ? findValue($event) : ''"
       @click="!resize ? captureValue() : ''"
@@ -13,9 +13,9 @@
       <line
         v-if="vRuler.position"
         :x1="vRuler.position"
-        :y1="scale.yStart"
+        y1="0"
         :x2="vRuler.position"
-        :y2="scale.yEnd"
+        :y2="scale.yEnd - scale.yStart"
         stroke="black"
         :stroke-width="vRuler.size"
       />
@@ -26,7 +26,7 @@
         :y1="hLine - 1"
         :x2="scale.xEnd"
         :y2="hLine - 1"
-        :stroke="hoveredValue === linesCount - hLine ? '#00000055' : 'transparent'"
+        :stroke="hoveredValue === linesCount + scale.yStart - hLine ? '#00000055' : 'transparent'"
         stroke-width="1"
       />
     </svg>
@@ -102,7 +102,7 @@ export default {
     };
     const findValue = (event) => {
       hoveredValue.value =
-        linesCount.value - 1 - event.target.getAttribute('y1');
+        linesCount.value - 1 - (event.target.getAttribute('y1') - props.scale.yStart);
     };
 
     const dragging = ref(false);
