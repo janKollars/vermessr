@@ -49,221 +49,188 @@
   </div>
 </template>
 
-<script>
-import { computed, ref, unref, watch } from "vue";
+<script setup lang="ts">
+import { ref, watch, computed, unref } from 'vue';
 
-export default {
-  props: {
-    foundValue: {
-      type: Number,
-      default: undefined,
+const props = defineProps<{
+  foundValue?: number,
+  overlayPosition: OverlayPositionSetting,
+  resize: boolean,
+  scale: ScaleSetting,
+  vRuler: VRulerSetting,
+}>()
+
+const emit = defineEmits<{
+  (e: 'update:found-value', value: number): void
+}>()
+
+const el = ref<HTMLElement | null>(null);
+watch(el, (newValue) => {
+  if (!newValue?.parentElement) return;
+  const resizeObserver = new ResizeObserver((entries) => {
+    startPosition.parentWidth = entries[0].contentRect.width;
+    startPosition.parentHeight = entries[0].contentRect.height;
+  });
+  resizeObserver.observe(newValue.parentElement);
+}, { immediate: true })
+
+const overlayVariables = computed(() => ({
+  '--overlay-width': props.overlayPosition.width + '%',
+  '--overlay-height': props.overlayPosition.height + '%',
+  '--overlay-x': props.overlayPosition.x + '%',
+  '--overlay-y': props.overlayPosition.y + '%',
+}));
+const linesCount = computed(
+  () => props.scale.yEnd - props.scale.yStart + 1
+);
+
+const hoveredValue = ref<number | undefined>(undefined);
+const findValue = (event: MouseEvent) => {
+  if (!event.target) return;
+  hoveredValue.value =
+  linesCount.value - 1 - (event.target.getAttribute('y1') - props.scale.yStart);
+};
+const captureValue = () => {
+  if (hoveredValue.value === undefined) return;
+  emit('update:found-value', hoveredValue.value);
+};
+
+const dragging = ref(false);
+
+const startPosition = {
+  overlayPosition: { ...unref(props.overlayPosition) },
+  mouseX: ref<number | undefined>(undefined),
+  mouseY: ref<number | undefined>(undefined),
+  parentWidth: undefined as number | undefined,
+  parentHeight: undefined as number | undefined,
+};
+
+const mouseDownHandler = (event: MouseEvent) => {
+  startPosition.overlayPosition = { ...unref(props.overlayPosition) };
+  startPosition.mouseX = event.x;
+  startPosition.mouseY = event.y;
+  dragging.value = true;
+};
+const mouseUpHandler = () => {
+  dragging.value = false;
+};
+
+const registerMouseMoveEvent = (fun: (event: MouseEvent) => void) => {
+  document.addEventListener('mousemove', fun);
+  document.addEventListener(
+    'mouseup',
+    () => {
+      document.removeEventListener('mousemove', fun);
     },
-    overlayPosition: {
-      type: Object,
-      required: true,
-    },
-    resize: {
-      type: Boolean,
-      required: true,
-    },
-    scale: {
-      type: Object,
-      required: true,
-    },
-    vRuler: {
-      type: Object,
-      required: true,
-    },
+    {
+      once: true,
+    }
+  );
+};
+
+const transformHelper = {
+  x(event: MouseEvent) {
+    props.overlayPosition.x =
+      startPosition.overlayPosition.x +
+      ((event.x - startPosition.mouseX) / startPosition.parentWidth) * 100;
   },
-  emits: ['update:found-value'],
-  setup(props, { emit }) {
-    const el = ref(null);
-    watch(el, (el) => {
-      const resizeObserver = new ResizeObserver((entries) => {
-        startPosition.parentWidth = entries[0].contentRect.width;
-        startPosition.parentHeight = entries[0].contentRect.height;
-      });
-      resizeObserver.observe(el.parentElement);
-    });
-
-    const overlayVariables = computed(() => ({
-      '--overlay-width': props.overlayPosition.width + '%',
-      '--overlay-height': props.overlayPosition.height + '%',
-      '--overlay-x': props.overlayPosition.x + '%',
-      '--overlay-y': props.overlayPosition.y + '%',
-    }));
-    const linesCount = computed(
-      () => props.scale.yEnd - props.scale.yStart + 1
-    );
-
-    const hoveredValue = ref(undefined);
-    const captureValue = () => {
-      emit('update:found-value', hoveredValue.value);
-    };
-    const findValue = (event) => {
-      hoveredValue.value =
-        linesCount.value - 1 - (event.target.getAttribute('y1') - props.scale.yStart);
-    };
-
-    const dragging = ref(false);
-
-    const startPosition = {
-      overlayPosition: { ...unref(props.overlayPosition) },
-      mouseX: ref(undefined),
-      mouseY: ref(undefined),
-      parentWidth: undefined,
-      parentHeight: undefined,
-    };
-
-    const mouseDownHandler = (event) => {
-      startPosition.overlayPosition = { ...unref(props.overlayPosition) };
-      startPosition.mouseX = event.x;
-      startPosition.mouseY = event.y;
-      dragging.value = true;
-    };
-    const mouseUpHandler = () => {
-      dragging.value = false;
-    };
-
-    const registerMouseMoveEvent = (fun) => {
-      document.addEventListener('mousemove', fun);
-      document.addEventListener(
-        'mouseup',
-        () => {
-          document.removeEventListener('mousemove', fun);
-        },
-        {
-          once: true,
-        }
-      );
-    };
-
-    const transformHelper = {
-      x(event) {
-        props.overlayPosition.x =
-          startPosition.overlayPosition.x +
-          ((event.x - startPosition.mouseX) / startPosition.parentWidth) * 100;
-      },
-      y(event) {
-        props.overlayPosition.y =
-          startPosition.overlayPosition.y +
-          ((event.y - startPosition.mouseY) / startPosition.parentHeight) * 100;
-      },
-      width(event, additive = true) {
-        props.overlayPosition.width =
-          startPosition.overlayPosition.width +
-          ((event.x - startPosition.mouseX) / startPosition.parentWidth) *
-            100 *
-            (additive ? 1 : -1);
-      },
-      height(event, additive = true) {
-        props.overlayPosition.height =
-          startPosition.overlayPosition.height +
-          ((event.y - startPosition.mouseY) / startPosition.parentHeight) *
-            100 *
-            (additive ? 1 : -1);
-      },
-    };
-
-    const transformHandler = {
-      move(event) {
-        event.preventDefault();
-        transformHelper.y(event);
-        transformHelper.x(event);
-      },
-      tl(event) {
-        event.preventDefault();
-        transformHelper.y(event);
-        transformHelper.height(event, false);
-        transformHelper.x(event);
-        transformHelper.width(event, false);
-      },
-      t(event) {
-        event.preventDefault();
-        transformHelper.y(event);
-        transformHelper.height(event, false);
-      },
-      tr(event) {
-        event.preventDefault();
-        transformHelper.y(event);
-        transformHelper.height(event, false);
-        transformHelper.width(event);
-      },
-      r(event) {
-        event.preventDefault();
-        transformHelper.width(event);
-      },
-      br(event) {
-        event.preventDefault();
-        transformHelper.height(event);
-        transformHelper.width(event);
-      },
-      b(event) {
-        event.preventDefault();
-        transformHelper.height(event);
-      },
-      bl(event) {
-        event.preventDefault();
-        transformHelper.height(event);
-        transformHelper.x(event);
-        transformHelper.width(event, false);
-      },
-      l(event) {
-        event.preventDefault();
-        transformHelper.x(event);
-        transformHelper.width(event, false);
-      },
-    };
-
-    const moveStart = () => {
-      registerMouseMoveEvent(transformHandler.move);
-    };
-    const resizeTLStart = () => {
-      registerMouseMoveEvent(transformHandler.tl);
-    };
-    const resizeTStart = () => {
-      registerMouseMoveEvent(transformHandler.t);
-    };
-    const resizeTRStart = () => {
-      registerMouseMoveEvent(transformHandler.tr);
-    };
-    const resizeRStart = () => {
-      registerMouseMoveEvent(transformHandler.r);
-    };
-    const resizeBRStart = () => {
-      registerMouseMoveEvent(transformHandler.br);
-    };
-    const resizeBStart = () => {
-      registerMouseMoveEvent(transformHandler.b);
-    };
-    const resizeBLStart = () => {
-      registerMouseMoveEvent(transformHandler.bl);
-    };
-    const resizeLStart = () => {
-      registerMouseMoveEvent(transformHandler.l);
-    };
-
-    return {
-      el,
-      overlayVariables,
-      linesCount,
-      hoveredValue,
-      findValue,
-      captureValue,
-      dragging,
-      mouseDownHandler,
-      mouseUpHandler,
-      moveStart,
-      resizeTLStart,
-      resizeTStart,
-      resizeTRStart,
-      resizeRStart,
-      resizeBRStart,
-      resizeBStart,
-      resizeBLStart,
-      resizeLStart,
-    };
+  y(event: MouseEvent) {
+    props.overlayPosition.y =
+      startPosition.overlayPosition.y +
+      ((event.y - startPosition.mouseY) / startPosition.parentHeight) * 100;
   },
+  width(event: MouseEvent, additive = true) {
+    props.overlayPosition.width =
+      startPosition.overlayPosition.width +
+      ((event.x - startPosition.mouseX) / startPosition.parentWidth) *
+        100 *
+        (additive ? 1 : -1);
+  },
+  height(event: MouseEvent, additive = true) {
+    props.overlayPosition.height =
+      startPosition.overlayPosition.height +
+      ((event.y - startPosition.mouseY) / startPosition.parentHeight) *
+        100 *
+        (additive ? 1 : -1);
+  },
+};
+
+const transformHandler = {
+  move(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.y(event);
+    transformHelper.x(event);
+  },
+  tl(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.y(event);
+    transformHelper.height(event, false);
+    transformHelper.x(event);
+    transformHelper.width(event, false);
+  },
+  t(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.y(event);
+    transformHelper.height(event, false);
+  },
+  tr(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.y(event);
+    transformHelper.height(event, false);
+    transformHelper.width(event);
+  },
+  r(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.width(event);
+  },
+  br(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.height(event);
+    transformHelper.width(event);
+  },
+  b(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.height(event);
+  },
+  bl(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.height(event);
+    transformHelper.x(event);
+    transformHelper.width(event, false);
+  },
+  l(event: MouseEvent) {
+    event.preventDefault();
+    transformHelper.x(event);
+    transformHelper.width(event, false);
+  },
+};
+
+const moveStart = () => {
+  registerMouseMoveEvent(transformHandler.move);
+};
+const resizeTLStart = () => {
+  registerMouseMoveEvent(transformHandler.tl);
+};
+const resizeTStart = () => {
+  registerMouseMoveEvent(transformHandler.t);
+};
+const resizeTRStart = () => {
+  registerMouseMoveEvent(transformHandler.tr);
+};
+const resizeRStart = () => {
+  registerMouseMoveEvent(transformHandler.r);
+};
+const resizeBRStart = () => {
+  registerMouseMoveEvent(transformHandler.br);
+};
+const resizeBStart = () => {
+  registerMouseMoveEvent(transformHandler.b);
+};
+const resizeBLStart = () => {
+  registerMouseMoveEvent(transformHandler.bl);
+};
+const resizeLStart = () => {
+  registerMouseMoveEvent(transformHandler.l);
 };
 </script>
 

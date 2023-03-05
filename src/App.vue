@@ -28,102 +28,88 @@
       <input id="overlay-x" v-model.number="overlay.x" type="number" step="0.1" />
       <label for="overlay-y">Y (%)</label>
       <input id="overlay-y" v-model.number="overlay.y" type="number" step="0.1" />
-      <button :aria-pressed="resizing.toString()" title="Shift" @click="resizing = !resizing">resize freely</button>
+      <button :aria-pressed="resizing" title="Shift" @click="resizing = !resizing">resize freely</button>
     </fieldset>
     <p v-if="foundValue !== undefined">Selected value: {{ foundValue }}</p>
   </aside>
 
   <div :class="['canvas', { 'canvas--operating': image.loading }]" @drop="fileDropHandler" @dragover="fileDragOverHandler">
     <span v-if="!image.loading" class="canvas__drop-info">Drop image</span>
-    <template v-else>
-      <div class="uploaded-image" :style="image.width ? `--aspect-ratio: ${image.width}/${image.height}` : ''">
-        <img v-if="image.dataUrl" :src="image.dataUrl" alt="" draggable="false" />
-        <grid-overlay v-model:found-value="foundValue" v-model:overlay-position="overlay" :resize="resizing" :scale="scale" :v-ruler="vRuler" />
-      </div>
-    </template>
+    <div v-else class="uploaded-image" :style="image.width ? `--aspect-ratio: ${image.width}/${image.height}` : ''">
+      <img v-if="image.dataUrl" :src="image.dataUrl" alt="" draggable="false" />
+      <grid-overlay v-model:found-value="foundValue" v-model:overlay-position="overlay" :resize="resizing" :scale="scale" :v-ruler="vRuler" />
+    </div>
   </div>
 </template>
 
-<script>
-import { onMounted, reactive, ref } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue';
 import GridOverlay from './components/GridOverlay.vue'
 
-export default {
-  components: { GridOverlay },
-  setup() {
-    const foundValue = ref(undefined)
-    const resizing = ref(false)
+const foundValue = ref(undefined)
+const resizing = ref(false)
 
-    const image = reactive({
-      loading: false,
-      dataUrl: undefined,
-      width: undefined,
-      height: undefined
+const image = reactive({
+  loading: false,
+  dataUrl: undefined as string|undefined,
+  width: undefined as number|undefined,
+  height: undefined as number|undefined
+})
+const fileDropHandler = (event: DragEvent) => {
+  event.preventDefault()
+  if (!event.dataTransfer) return;
+  const firstItem = event.dataTransfer.items[0]
+  if (!firstItem?.type.startsWith('image/')) return
+  const file = firstItem.getAsFile()
+  if (!file) return;
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    if (!event.target?.result) return;
+    image.dataUrl = event.target.result.toString();
+    const img = new Image()
+    img.src = event.target.result.toString()
+    img.onload = (() => {
+      image.width = img.width
+      image.height = img.height
     })
-    const fileDropHandler = (event) => {
-      event.preventDefault()
-      const firstItem = event.dataTransfer.items[0]
-      if (!firstItem?.type.startsWith('image/')) return
-      const file = firstItem.getAsFile()
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        image.dataUrl = event.target.result
-        const img = new Image()
-        img.src = event.target.result
-        img.onload = (() => {
-          image.width = img.width
-          image.height = img.height
-        })
-      }
-      image.loading = true
-      reader.readAsDataURL(file)
-    }
-    const fileDragOverHandler = (event) => {
-      event.preventDefault()
-    }
-
-    const vRuler = reactive({
-      position: 0,
-      size: 0.1
-    })
-    const scale = reactive({
-      xStart: 0,
-      xEnd: 70,
-      yStart: 0,
-      yEnd: 100
-    })
-    const overlay = reactive({
-      width: 100,
-      height: 100,
-      x: 0,
-      y: 0
-    })
-
-    onMounted(() => {
-      document.addEventListener('keydown', (event) => {
-        if (event.code === 'ShiftLeft') {
-          resizing.value = true
-        }
-      })
-      document.addEventListener('keyup', (event) => {
-        if (event.code === 'ShiftLeft') {
-          resizing.value = false
-        }
-      })
-    })
-
-    return {
-      foundValue,
-      resizing,
-      image,
-      fileDropHandler,
-      fileDragOverHandler,
-      vRuler,
-      scale,
-      overlay
-    }
   }
+  image.loading = true
+  reader.readAsDataURL(file)
 }
+const fileDragOverHandler = (event: DragEvent) => {
+  event.preventDefault()
+}
+
+const vRuler = reactive<VRulerSetting>({
+  position: 0,
+  size: 0.1
+})
+
+const scale = reactive<ScaleSetting>({
+  xStart: 0,
+  xEnd: 70,
+  yStart: 0,
+  yEnd: 100
+})
+const overlay = reactive<OverlayPositionSetting>({
+  width: 100,
+  height: 100,
+  x: 0,
+  y: 0
+})
+
+onMounted(() => {
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'ShiftLeft') {
+      resizing.value = true
+    }
+  })
+  document.addEventListener('keyup', (event) => {
+    if (event.code === 'ShiftLeft') {
+      resizing.value = false
+    }
+  })
+})
 </script>
 
 <style>
