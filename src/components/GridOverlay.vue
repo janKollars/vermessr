@@ -65,11 +65,15 @@ const emit = defineEmits<{
 }>()
 
 const el = ref<HTMLElement | null>(null);
+  const parentDimensions = {
+  width: 0,
+  height: 0
+}
 watch(el, (newValue) => {
   if (!newValue?.parentElement) return;
   const resizeObserver = new ResizeObserver((entries) => {
-    startPosition.parentWidth = entries[0].contentRect.width;
-    startPosition.parentHeight = entries[0].contentRect.height;
+    parentDimensions.width = entries[0].contentRect.width;
+    parentDimensions.height = entries[0].contentRect.height;
   });
   resizeObserver.observe(newValue.parentElement);
 }, { immediate: true })
@@ -87,8 +91,9 @@ const linesCount = computed(
 const hoveredValue = ref<number | undefined>(undefined);
 const findValue = (event: MouseEvent) => {
   if (!event.target) return;
+  const hoveredY1Value = Number((event.target as SVGLineElement).getAttribute('y1') as string);
   hoveredValue.value =
-  linesCount.value - 1 - (event.target.getAttribute('y1') - props.scale.yStart);
+  linesCount.value - 1 - (hoveredY1Value - props.scale.yStart);
 };
 const captureValue = () => {
   if (hoveredValue.value === undefined) return;
@@ -99,10 +104,8 @@ const dragging = ref(false);
 
 const startPosition = {
   overlayPosition: { ...unref(props.overlayPosition) },
-  mouseX: ref<number | undefined>(undefined),
-  mouseY: ref<number | undefined>(undefined),
-  parentWidth: undefined as number | undefined,
-  parentHeight: undefined as number | undefined,
+  mouseX: 0,
+  mouseY: 0,
 };
 
 const mouseDownHandler = (event: MouseEvent) => {
@@ -132,24 +135,24 @@ const transformHelper = {
   x(event: MouseEvent) {
     props.overlayPosition.x =
       startPosition.overlayPosition.x +
-      ((event.x - startPosition.mouseX) / startPosition.parentWidth) * 100;
+      ((event.x - startPosition.mouseX) / parentDimensions.width) * 100;
   },
   y(event: MouseEvent) {
     props.overlayPosition.y =
       startPosition.overlayPosition.y +
-      ((event.y - startPosition.mouseY) / startPosition.parentHeight) * 100;
+      ((event.y - startPosition.mouseY) / parentDimensions.height) * 100;
   },
   width(event: MouseEvent, additive = true) {
     props.overlayPosition.width =
       startPosition.overlayPosition.width +
-      ((event.x - startPosition.mouseX) / startPosition.parentWidth) *
+      ((event.x - startPosition.mouseX) / parentDimensions.width) *
         100 *
         (additive ? 1 : -1);
   },
   height(event: MouseEvent, additive = true) {
     props.overlayPosition.height =
       startPosition.overlayPosition.height +
-      ((event.y - startPosition.mouseY) / startPosition.parentHeight) *
+      ((event.y - startPosition.mouseY) / parentDimensions.height) *
         100 *
         (additive ? 1 : -1);
   },
